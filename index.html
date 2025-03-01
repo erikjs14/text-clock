@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Word Clock (German)</title>
+    <style>
+      body {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: calc(100vh - 8rem);
+        background-color: #222;
+        color: #555;
+        font-family: Arial, sans-serif;
+        position: relative;
+        padding: 3rem;
+      }
+      .clock {
+        display: grid;
+        grid-template-columns: repeat(11, minmax(0, 1fr));
+        gap: 7px;
+        font-size: 2rem;
+        text-transform: uppercase;
+        position: relative;
+        margin-top: 5rem;
+        max-width: 100%;
+      }
+      .letter {
+        transition: color 0.3s, text-shadow 0.3s;
+        text-align: center;
+      }
+      .highlight {
+        color: white;
+        text-shadow: 0 0 15px rgba(255, 255, 255, 1);
+      }
+      .dots {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        background-color: #555;
+        border-radius: 50%;
+        transition: background-color 0.3s, box-shadow 0.3s;
+      }
+      .dots.active {
+        background-color: white;
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+      }
+      .dot1 {
+        top: -2rem;
+        left: -2rem;
+      }
+      .dot2 {
+        top: -2rem;
+        right: -2rem;
+      }
+      .dot3 {
+        bottom: -2rem;
+        right: -2rem;
+      }
+      .dot4 {
+        bottom: -2rem;
+        left: -2rem;
+      }
+      .time-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+      .time-selector {
+        padding: 10px;
+        font-size: 0.8rem;
+        background: #333;
+        border: none;
+        color: white;
+        border-radius: 5px;
+        text-align: center;
+        outline: none;
+        transition: ease-out 0.1s;
+      }
+      .reset-button {
+        background: #333;
+        border: none;
+        color: white;
+        padding: 10px;
+        font-size: 0.8rem;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: ease-out 0.1s;
+      }
+      .time-selector:hover,
+      .reset-button:hover {
+        box-shadow: 0 0 4px rgba(255, 255, 255, 0.4);
+      }
+
+      @media (max-width: 600px) {
+        body {
+          height: calc(100vh - 5rem);
+          padding: 1.5rem;
+        }
+        .clock {
+          font-size: 1.7rem;
+        }
+        .dot1 {
+          top: -2rem;
+          left: -1rem;
+        }
+        .dot2 {
+          top: -2rem;
+          right: -1rem;
+        }
+        .dot3 {
+          bottom: -2rem;
+          right: -1rem;
+        }
+        .dot4 {
+          bottom: -2rem;
+          left: -1rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="time-container">
+      <input type="time" class="time-selector" id="timeSelector" />
+      <button class="reset-button" id="resetButton">▶️</button>
+    </div>
+    <div class="clock" id="clock">
+      <div class="dots dot1"></div>
+      <div class="dots dot2"></div>
+      <div class="dots dot3"></div>
+      <div class="dots dot4"></div>
+    </div>
+
+    <script>
+      let interval;
+      let isRunning = false;
+      const gridContainer = document.getElementById('clock');
+      const timeSelector = document.getElementById('timeSelector');
+      const resetButton = document.getElementById('resetButton');
+      const gridText =
+        'ESKISTAFÜNFZEHNZWANZIGDREIVIERTELVORFUNKNACHHALBAELFÜNFEINSXAMZWEIDREIPMJVIERSECHSNLACHTSIEBENZWÖLFZEHNEUNKUHR';
+
+      function renderGrid() {
+        gridText.split('').forEach((letter) => {
+          const span = document.createElement('span');
+          span.textContent = letter;
+          span.classList.add('letter');
+          gridContainer.appendChild(span);
+        });
+      }
+
+      function updateClock(hours, minutes) {
+        let roundedMinutes = Math.floor(minutes / 5) * 5;
+
+        const words = ['ES', 'IST'];
+        const mappings = {
+          5: ['FÜNF', 'NACH'],
+          10: ['ZEHN', 'NACH'],
+          15: ['VIERTEL', 'NACH'],
+          20: ['ZWANZIG', 'NACH'],
+          25: ['FÜNF', 'VOR', 'HALB'],
+          30: ['HALB'],
+          35: ['FÜNF', 'NACH', 'HALB'],
+          40: ['ZWANZIG', 'VOR'],
+          45: ['VIERTEL', 'VOR'],
+          50: ['ZEHN', 'VOR'],
+          55: ['FÜNF', 'VOR'],
+        };
+        if (mappings[roundedMinutes]) words.push(...mappings[roundedMinutes]);
+
+        if (roundedMinutes >= 25) hours++;
+        if (hours > 12) hours -= 12;
+        const hourMap = [
+          'ZWÖLF',
+          roundedMinutes === 0 ? 'EIN' : 'EINS',
+          'ZWEI',
+          'DREI',
+          'VIER',
+          'FÜNF',
+          'SECHS',
+          'SIEBEN',
+          'ACHT',
+          'NEUN',
+          'ZEHN',
+          'ELF',
+          'ZWÖLF',
+        ];
+        words.push(hourMap[hours]);
+
+        if (roundedMinutes === 0) words.push('UHR');
+
+        document.querySelectorAll('.letter').forEach((span) => span.classList.remove('highlight'));
+        let minIdx = 0;
+        words.forEach((word) => {
+          let index = gridText.substring(minIdx).indexOf(word) + minIdx;
+          if (index >= minIdx) {
+            minIdx = index + 1;
+            for (let i = 0; i < word.length; i++) {
+              let letter = gridContainer.children[4 + index + i];
+              if (letter) letter.classList.add('highlight');
+            }
+          }
+        });
+
+        document.querySelectorAll('.dots').forEach((dot) => dot.classList.remove('active'));
+        const extraMinutes = minutes % 5;
+        if (extraMinutes >= 1) document.querySelector('.dots.dot1').classList.add('active');
+        if (extraMinutes >= 2) document.querySelector('.dots.dot2').classList.add('active');
+        if (extraMinutes >= 3) document.querySelector('.dots.dot3').classList.add('active');
+        if (extraMinutes >= 4) document.querySelector('.dots.dot4').classList.add('active');
+      }
+
+      function stopClock() {
+        clearInterval(interval);
+        isRunning = false;
+      }
+
+      function updateInput(hours, minutes) {
+        timeSelector.value = `${hours.toString().padStart(2, '0')}:${minutes
+          .toString()
+          .padStart(2, '0')}`;
+      }
+
+      timeSelector.addEventListener('input', () => {
+        stopClock();
+        const [hours, minutes] = timeSelector.value.split(':').map(Number);
+        updateClock(hours, minutes);
+      });
+
+      resetButton.addEventListener('click', () => {
+        timeSelector.value = '';
+        startClock();
+      });
+
+      function startClock() {
+        stopClock();
+        interval = setInterval(() => {
+          const now = new Date();
+          updateClock(now.getHours(), now.getMinutes());
+          updateInput(now.getHours(), now.getMinutes());
+        }, 1000);
+        const now = new Date();
+        updateClock(now.getHours(), now.getMinutes());
+        updateInput(now.getHours(), now.getMinutes());
+        isRunning = true;
+      }
+
+      renderGrid();
+      startClock();
+    </script>
+  </body>
+</html>
